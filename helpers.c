@@ -43,3 +43,4 @@ void SetRGB(const Pixel_array * parray, IMG_P img)
         img->image_data[i*3 + 2] = (unsigned char) parray->array[i].b;     
     }
 }
+

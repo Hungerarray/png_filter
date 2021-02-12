@@ -1,5 +1,7 @@
 #include "helpers.h"
 #include <stdio.h>
+#include <pthread.h>
+#include <string.h>
 
 typedef struct coords
 {
@@ -18,37 +20,12 @@ size_t CoordToPos(size_t width, coords coords)
     return coords.y * width + coords.x;
 }
 
-void mid_blur(Pixel_array *data, size_t pos)
+Pixel compute_blur(coords start, coords end, const Pixel_array * data)
 {
-    Pixel new_value = {0, 0, 0};
-    coords cord = posToCoord(data->width, pos);
-
-    for (int x = cord.x - 1; x <= cord.x + 1; ++x)
+    Pixel new_value = {0,0,0};
+    for (int x = start.x; x <= end.x; ++x)
     {
-        for (int y = cord.y - 1; y <= cord.y + 1; ++y)
-        {
-            coords c = {x, y};
-            new_value.r += data->array[CoordToPos(data->width, c)].r;
-            new_value.g += data->array[CoordToPos(data->width, c)].g;
-            new_value.b += data->array[CoordToPos(data->width, c)].b;
-        }
-    }
-
-    new_value.r /= 9;
-    new_value.g /= 9;
-    new_value.b /= 9;
-
-    data->array[pos] = new_value;
-}
-
-void top_blur(Pixel_array *data, size_t pos)
-{
-    Pixel new_value = {0, 0, 0};
-    coords curr = posToCoord(data->width, pos);
-
-    for (int x = curr.x; x <= curr.x + 2; ++x)
-    {
-        for (int y = curr.y - 1; y <= curr.y + 1; ++y)
+        for (int y = start.y; y <= end.y; ++y)
         {
             coords c = {x, y};
 
@@ -61,190 +38,96 @@ void top_blur(Pixel_array *data, size_t pos)
     new_value.g /= 9;
     new_value.b /= 9;
 
-    data->array[pos] = new_value;
+    return new_value;
 }
 
-void bottom_blur(Pixel_array *data, size_t pos)
+Pixel mid_blur(const Pixel_array *data, size_t pos)
 {
-    Pixel new_value = {0, 0, 0};
-    coords curr = posToCoord(data->width, pos);
-
-    for (int x = curr.x - 2; x <= curr.x; ++x)
-    {
-        for (int y = curr.y - 1; y <= curr.y + 1; ++y)
-        {
-            coords c = {x, y};
-
-            new_value.r += data->array[CoordToPos(data->width, c)].r;
-            new_value.g += data->array[CoordToPos(data->width, c)].g;
-            new_value.b += data->array[CoordToPos(data->width, c)].b;
-        }
-    }
-    new_value.r /= 9;
-    new_value.g /= 9;
-    new_value.b /= 9;
-
-    data->array[pos] = new_value;
+    coords curr = posToCoord(data->width, pos), strt = {curr.x - 1, curr.y - 1}, end = {curr.x + 1, curr.y + 1};
+    return compute_blur(strt, end, data);
 }
 
-void left_blur(Pixel_array *data, size_t pos)
+Pixel top_blur(const Pixel_array *data, size_t pos)
 {
-    Pixel new_value = {0, 0, 0};
-    coords curr = posToCoord(data->width, pos);
 
-    for (int x = curr.x - 1; x <= curr.x + 1; ++x)
-    {
-        for (int y = curr.y; y <= curr.y + 2; ++y)
-        {
-            coords c = {x, y};
+    coords curr = posToCoord(data->width, pos), strt = {curr.x, curr.y - 1}, end = {curr.x + 2, curr.y + 1};
 
-            new_value.r += data->array[CoordToPos(data->width, c)].r;
-            new_value.g += data->array[CoordToPos(data->width, c)].g;
-            new_value.b += data->array[CoordToPos(data->width, c)].b;
-        }
-    }
-    new_value.r /= 9;
-    new_value.g /= 9;
-    new_value.b /= 9;
-
-    data->array[pos] = new_value;
+   
+    return compute_blur(strt, end, data);
 }
 
-void right_blur(Pixel_array *data, size_t pos)
+Pixel bottom_blur(const Pixel_array *data, size_t pos)
 {
-    Pixel new_value = {0, 0, 0};
-    coords curr = posToCoord(data->width, pos);
+    coords curr = posToCoord(data->width, pos), strt = {curr.x - 2, curr.y - 1}, end = {curr.x, curr.y + 1};
 
-    for (int x = curr.x - 1; x <= curr.x + 1; ++x)
-    {
-        for (int y = curr.y - 2; y <= curr.y; ++y)
-        {
-            coords c = {x, y};
-
-            new_value.r += data->array[CoordToPos(data->width, c)].r;
-            new_value.g += data->array[CoordToPos(data->width, c)].g;
-            new_value.b += data->array[CoordToPos(data->width, c)].b;
-        }
-    }
-    new_value.r /= 9;
-    new_value.g /= 9;
-    new_value.b /= 9;
-
-    data->array[pos] = new_value;
+    return compute_blur(strt, end, data);
 }
 
-void top_right_blur(Pixel_array *data, size_t pos)
+Pixel left_blur(const Pixel_array *data, size_t pos)
 {
-    Pixel new_value = {0, 0, 0};
-    coords curr = posToCoord(data->width, pos);
+    coords curr = posToCoord(data->width, pos), strt = {curr.x - 1, curr.y}, end = {curr.x + 1, curr.y + 2};
 
-    for (int x = curr.x; x <= curr.x + 2; ++x)
-    {
-        for (int y = curr.y - 2; y <= curr.y; ++y)
-        {
-            coords c = {x, y};
-
-            new_value.r += data->array[CoordToPos(data->width, c)].r;
-            new_value.g += data->array[CoordToPos(data->width, c)].g;
-            new_value.b += data->array[CoordToPos(data->width, c)].b;
-        }
-    }
-    new_value.r /= 9;
-    new_value.g /= 9;
-    new_value.b /= 9;
-
-    data->array[pos] = new_value;
+    return compute_blur(strt, end, data);
 }
 
-void top_left_blur(Pixel_array *data, size_t pos)
+Pixel right_blur(const Pixel_array *data, size_t pos)
 {
-    Pixel new_value = {0, 0, 0};
-    coords curr = posToCoord(data->width, pos);
+    coords curr = posToCoord(data->width, pos), strt = {curr.x - 1, curr.y - 2}, end = {curr.x + 1, curr.y};
 
-    for (int x = curr.x; x <= curr.x + 2; ++x)
-    {
-        for (int y = curr.y; y <= curr.y + 2; ++y)
-        {
-            coords c = {x, y};
-
-            new_value.r += data->array[CoordToPos(data->width, c)].r;
-            new_value.g += data->array[CoordToPos(data->width, c)].g;
-            new_value.b += data->array[CoordToPos(data->width, c)].b;
-        }
-    }
-    new_value.r /= 9;
-    new_value.g /= 9;
-    new_value.b /= 9;
-
-    data->array[pos] = new_value;
+    return compute_blur(strt, end, data);
 }
 
-void bottom_left_blur(Pixel_array *data, size_t pos)
+Pixel top_right_blur(const Pixel_array *data, size_t pos)
 {
-    Pixel new_value = {0, 0, 0};
-    coords curr = posToCoord(data->width, pos);
+    coords curr = posToCoord(data->width, pos), strt = {curr.x, curr.y - 2}, end = {curr.x + 2, curr.y};
 
-    for (int x = curr.x - 2; x <= curr.x; ++x)
-    {
-        for (int y = curr.y; y <= curr.y + 2; ++y)
-        {
-            coords c = {x, y};
-
-            new_value.r += data->array[CoordToPos(data->width, c)].r;
-            new_value.g += data->array[CoordToPos(data->width, c)].g;
-            new_value.b += data->array[CoordToPos(data->width, c)].b;
-        }
-    }
-    new_value.r /= 9;
-    new_value.g /= 9;
-    new_value.b /= 9;
-
-    data->array[pos] = new_value;
+    return compute_blur(strt, end, data);
 }
 
-void bottom_right_blur(Pixel_array *data, size_t pos)
+Pixel top_left_blur(const Pixel_array *data, size_t pos)
 {
-    Pixel new_value = {0, 0, 0};
-    coords curr = posToCoord(data->width, pos);
+    coords curr = posToCoord(data->width, pos), strt = {curr.x, curr.y}, end = {curr.x + 2, curr.y + 2};
 
-    for (int x = curr.x - 2; x <= curr.x; ++x)
-    {
-        for (int y = curr.y - 2; y <= curr.y; ++y)
-        {
-            coords c = {x, y};
-
-            new_value.r += data->array[CoordToPos(data->width, c)].r;
-            new_value.g += data->array[CoordToPos(data->width, c)].g;
-            new_value.b += data->array[CoordToPos(data->width, c)].b;
-        }
-    }
-    new_value.r /= 9;
-    new_value.g /= 9;
-    new_value.b /= 9;
-
-    data->array[pos] = new_value;
+    return compute_blur(strt, end, data);
 }
 
+Pixel bottom_left_blur(const Pixel_array *data, size_t pos)
+{
+    coords curr = posToCoord(data->width, pos), strt = {curr.x - 2, curr.y}, end = {curr.x, curr.y + 2};
+
+    return compute_blur(strt, end, data);
+}
+
+Pixel bottom_right_blur(const Pixel_array *data, size_t pos)
+{
+    coords curr = posToCoord(data->width, pos), strt = {curr.x, curr.y - 1}, end = {curr.x + 2, curr.y + 1};
+
+    return compute_blur(strt, end, data);
+}
+/* 
 void blur(Pixel_array *data)
 {
     size_t width = data->width;
+    Pixel_P new_data = (Pixel_P) malloc(data->sz*sizeof(Pixel));
+
     for (int i = 0; i < data->sz; ++i)
     {
+        printf("%d of %lu pixels done.\n", i + 1, data->sz);
         if (i % width == 0)
         {
             if (i / width == 0)
             {
-                top_left_blur(data, i);
+                new_data[i] = top_left_blur(data, i);
                 continue;
             }
             else if (i / width == width - 1)
             {
-                bottom_left_blur(data, i);
+                new_data[i] = bottom_left_blur(data, i);
                 continue;
             }
             else
             {
-                left_blur(data, i);
+                new_data[i] = left_blur(data, i);
                 continue;
             }
         }
@@ -252,30 +135,136 @@ void blur(Pixel_array *data)
         {
             if (i / width == 0)
             {
-                top_right_blur(data, i);
+                new_data[i] = top_right_blur(data, i);
                 continue;
             }
             else if (i / width == width - 1)
             {
-                bottom_right_blur(data, i);
+                new_data[i] = bottom_right_blur(data, i);
                 continue;
             }
             else
             {
-                right_blur(data, i);
+                new_data[i] = right_blur(data, i);
                 continue;
             }
         }
         else if (i / width == 0)
         {
-            top_blur(data, i);
+            new_data[i] = top_blur(data, i);
             continue;
         }
         else if (i / width == width - 1)
         {
-            bottom_blur(data, i);
+            new_data[i] = bottom_blur(data, i);
             continue;
         }
-        printf("%d of %lu pixels done.\n", i + 1, data->sz);
     }
+    //free(data->array);
+    data->array = new_data;
+} */
+
+Pixel do_blur(const Pixel_array * data, size_t pos)
+{
+    size_t width = data->width;
+    if (pos % width == 0)
+    {
+        if (pos / width == 0)
+            return top_left_blur(data, pos);
+        else if ( pos / width == width - 1)
+            return bottom_left_blur(data, pos);
+        else
+            return left_blur(data, pos);
+    }
+    else if (pos % width == width - 1)
+    {
+        if (pos / width == 0)
+            return top_right_blur(data, pos);
+        else if (pos / width == width - 1)  
+            return bottom_right_blur(data,pos);
+        else
+            return right_blur(data, pos);
+    }
+    else if (pos / width == 0)
+        return top_blur(data, pos);
+    else if (pos / width == width - 1)
+        return bottom_blur(data, pos);
+    else
+        return mid_blur(data, pos);
 }
+
+typedef struct thread_data
+{
+    const Pixel_array * data;
+    Pixel_P *part;
+    size_t start;
+    size_t end;
+} thread_data;
+
+void * blur_par_sup(void * arg)
+{
+    static int gen_id = 1;
+    int thread_id = gen_id++;
+    const Pixel_array * data = ((thread_data *) arg)->data;
+    Pixel_P *part = ((thread_data *) arg)->part;
+    size_t strt = ((thread_data *) arg)->start, end = ((thread_data *) arg)->end;
+
+    *part = (Pixel_P) malloc((end - strt) * sizeof(Pixel));
+
+    for (int i = strt; i < end; ++i)
+    {
+        (*part)[i - strt] = do_blur(data, i);
+    }
+    printf("\nthread no. %d is done\n", thread_id);
+
+    return NULL ;
+}
+
+void blur_parallel(Pixel_array *data)
+{
+    // divide data into n segments
+    unsigned noSegments = 8;
+    size_t sz_segment = data->sz / noSegments;
+    Pixel_P * parts = (Pixel_P * ) malloc(noSegments * sizeof(Pixel_P));
+
+    // create a thread for each segment which blurs it individually
+    pthread_t * threads = (pthread_t *) malloc(noSegments * sizeof(pthread_t));
+    thread_data **t_data = (thread_data **) malloc(noSegments * sizeof(thread_data *));
+
+    for (int i = 0; i < noSegments; ++i)
+    {
+        t_data[i] = (thread_data *) malloc(sizeof(thread_data));
+        t_data[i]->data = data;
+        t_data[i]->part = &parts[i];
+        t_data[i]->start = i * sz_segment;
+        t_data[i]->end = (i + 1) * sz_segment;
+        if ( i == noSegments - 1)
+        {
+            t_data[i]->end = data->sz;
+            pthread_create(threads + i, NULL, blur_par_sup,(void *) &t_data[i]);
+        }   
+        else
+            pthread_create(threads + i, NULL, blur_par_sup,(void *) &t_data[i]);
+    }
+
+    for (int i = 0; i < noSegments; ++i)
+    {
+        pthread_join(threads[i], NULL);
+    }
+    // combine all the data the end
+    // replace the data
+    for (int i = 0; i < data->sz; ++i)
+    {
+        data->array[i] = parts[i / sz_segment][i % sz_segment];
+    }
+
+ /*    // clean
+    for (int i = 0; i < noSegments; ++i)
+    {
+        free(t_data[i]);
+        free(parts[i]);
+    }
+    free(parts);
+    free(threads);
+    free(t_data); */
+} 

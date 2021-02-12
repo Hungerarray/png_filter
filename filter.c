@@ -3,6 +3,7 @@
 #include "helpers.h"
 
 void blur(Pixel_array *data);
+void blur_parallel(Pixel_array *data);
 
 int main(int argc, char **argv)
 {
@@ -23,7 +24,7 @@ int main(int argc, char **argv)
     
     Pixel_array data;
     GetRGB(&image, &data);
-    blur(&data);
+    blur_parallel(&data);
     SetRGB(&data, &image);
 
     err = encodeImg(argv[2], &image);
